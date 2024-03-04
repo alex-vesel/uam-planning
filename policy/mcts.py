@@ -1,0 +1,187 @@
+import numpy as np
+import copy
+from profilehooks import profile
+from .actions import eVTOLFlightAction, eVTOLGroundAction, eVTOLNullAction
+
+FLIGHT_ACTIONS = [
+    eVTOLFlightAction(-0.4, False),
+    # eVTOLFlightAction(-0.1, False),
+    eVTOLFlightAction(0, False),
+    # eVTOLFlightAction(0.1, False),
+    eVTOLFlightAction(0.4, False),
+    eVTOLFlightAction(0, True)
+]
+
+GROUND_ACTIONS = [
+    eVTOLGroundAction(0),
+    eVTOLGroundAction(np.pi / 2),
+    eVTOLGroundAction(np.pi),
+    eVTOLGroundAction(3 * np.pi / 2),
+    eVTOLGroundAction(0, stay=True)
+]
+
+
+class MCTSPolicy:
+    def __init__(self, observation, idx, env, all_action=None):
+        init_state = MCTSState(observation, idx, env)
+        self.root = MCTSNode(init_state, all_action=all_action)
+        self.idx = idx
+        self.simulations = 100
+        self.search_depth = 3
+
+    # @profile
+    def search(self, return_list=None):
+        for _ in range(self.simulations):
+            v = self.tree_policy()
+            reward = v.rollout(self.search_depth)
+            v.backpropagate(reward)
+
+        best_action = self.root.best_child(c_param=0.).state.prev_action
+
+        if return_list is not None:
+            return_list[self.idx] = best_action
+
+        return best_action
+
+
+    def tree_policy(self):
+        current_node = self.root
+        while not current_node.is_terminal_node(self.search_depth):
+            if not current_node.is_fully_expanded():
+                return current_node.expand()
+            else:
+                current_node = current_node.best_child()
+
+        return current_node
+    
+
+class MCTSState:
+    def __init__(self, observation, idx, env, prev_action=eVTOLFlightAction(0, False), depth=0):
+        self.obs = observation
+        self.idx = idx
+        self.env = env
+        self.prev_action = prev_action
+        self.depth = depth
+
+
+    def reward(self):
+        dist_x = self.obs.x - self.env.map.vertiports[self.obs.target].x
+        dist_y = self.obs.y - self.env.map.vertiports[self.obs.target].y
+
+        target_dist = np.sqrt(dist_x ** 2 + dist_y ** 2)
+        if self.obs.is_grounded and target_dist < 1:
+            return 100
+        
+        if self.obs.is_conflict:
+            return -100
+        
+        # if self.obs.has_new_passenger:
+        #     return 10
+        
+        # if self.obs.delivered_passenger:
+        #     return 10
+        
+        # turn_penalty = -0.01 * self.prev_action.d_theta ** 2
+        turn_penalty = 0
+
+        # if self.obs.passenger:
+        #     # get distance to destination
+        #     dest_dist = np.sqrt((self.obs.x - self.env.map.vertiports[self.obs.passenger.destination].x) ** 2 + (self.obs.y - self.env.map.vertiports[self.obs.passenger.destination].y) ** 2)
+        #     max_size = np.sqrt(2 * self.env.map.size ** 2)
+        #     return 1 / (dest_dist + 1) + turn_penalty
+        # else:
+        return 1 / (target_dist + 1) + turn_penalty
+
+
+    def get_legal_actions(self):
+        if self.obs.is_grounded:
+            return copy.copy(GROUND_ACTIONS)
+        else:
+            if np.any(self.obs.can_land):
+                return copy.copy(FLIGHT_ACTIONS)
+            else:
+                return copy.copy(FLIGHT_ACTIONS)[:-1]
+        
+
+    def step(self, actions, rollout=False):
+        # copy environment to avoid modifying the original
+        if rollout:
+            new_env = self.env
+        else:
+            new_env = copy.deepcopy(self.env)
+        obs = new_env.step(actions, step_map=False)[self.idx]
+        return MCTSState(obs, self.idx, new_env, prev_action=actions[self.idx], depth=self.depth + 1)
+    
+
+    def is_terminal_state(self, max_depth):
+        return self.depth >= max_depth or self.obs.is_conflict# or self.obs.is_grounded# or self.obs.delivered_passenger or self.obs.has_new_passenger
+    
+
+class MCTSNode:
+    def __init__(self, state, all_action=None, parent=None):
+        self.state = state
+        self.all_action = all_action
+        if not all_action:
+            all_action_idx = np.random.randint(0, len(FLIGHT_ACTIONS), size=self.state.obs.agent_distances.shape[0])
+            self.all_action = [FLIGHT_ACTIONS[i] for i in all_action_idx]
+        self.parent = parent
+        self.children = []
+        self.q = 0
+        self.n = 0
+        self.untried_actions = state.get_legal_actions()
+
+
+    def reward(self):
+        return self.q / self.n if self.n != 0 else 0
+    
+
+    def expand(self):
+        a = self.untried_actions.pop()
+        self.all_action[self.state.idx] = a
+        next_state = self.state.step(self.all_action)
+        child_node = MCTSNode(next_state, parent=self)
+        self.children.append(child_node)
+        return child_node
+    
+
+    def rollout(self, max_depth):
+        rollout_state = self.state
+        rollout_flag = False
+        while not rollout_state.is_terminal_state(max_depth):
+            all_action_idx = np.random.randint(0, len(FLIGHT_ACTIONS), size=self.state.obs.agent_distances.shape[0])
+            all_action = [FLIGHT_ACTIONS[i] for i in all_action_idx]
+            rollout_state = rollout_state.step(all_action, rollout=rollout_flag)
+            rollout_flag = True
+        return rollout_state.reward()
+    
+
+    def backpropagate(self, reward):
+        lookahead_reward = self.state.reward() + 0.99 * reward
+        self.n += 1
+        self.q += lookahead_reward
+        if self.parent:
+            self.parent.backpropagate(lookahead_reward)
+
+
+    def best_child(self, c_param=1.4): 
+        if len(self.children) == 0:
+            return self
+        choices_weights = [
+            c.reward() + c_param * np.sqrt((2 * np.log(self.n) / c.n))
+            for c in self.children
+        ]
+        best_indices = np.flatnonzero(choices_weights == np.max(choices_weights))
+        return self.children[np.random.choice(best_indices)]
+
+
+
+    def is_terminal_node(self, max_depth):
+        return self.state.is_terminal_state(max_depth)
+
+
+    def is_fully_expanded(self):
+        return len(self.untried_actions) == 0
+    
+
+    def __repr__(self):
+        return f'MCTSNode({self.state.obs}, {self.q}, {self.n}, {self.reward()})'
