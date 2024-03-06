@@ -72,6 +72,7 @@ class eVTOLObservation():
         self.vp_distances = vp_distances
         self.vp_headings = vp_headings
         self.vp_num_passengers = vp_num_passengers
+        self.vp_radius = vp_radius
         # if self.passenger:
         #     self.can_land = [(d < vp_radius and i == self.passenger.destination) for i, d in enumerate(vp_distances)]
         # else:
@@ -81,4 +82,8 @@ class eVTOLObservation():
         self.agent_distances = agent_distances
         self.agent_headings = agent_headings
         self.is_conflict = is_conflict
+
+    def update_target(self, new_target):
+        self.target = new_target
+        self.can_land = self.vp_distances[self.target] < self.vp_radius
 

@@ -13,14 +13,17 @@ class Vertiport:
         self.num_vertiports = num_vertiports
         self.passengers = []
         self.landed_agents = []
-        self.arrival_rate = arrival_rate
+        self.arrival_rate_h = arrival_rate
+        self.arrival_rate_s = per_hr_to_per_s(arrival_rate)
+        self.loading = []
 
 
     def step(self, done_generating=False):
         if done_generating:
             num_new_passengers = 0
         else:
-            num_new_passengers = np.random.poisson(per_hr_to_per_s(self.arrival_rate)*self.dt)
+            num_new_passengers = np.random.poisson(self.arrival_rate_s*self.dt)
+        # num_new_passengers = 0
         self.total_passengers += num_new_passengers
         for _ in range(num_new_passengers):
             origin = self.id
@@ -31,9 +34,15 @@ class Vertiport:
 
         matches = []
         while len(self.passengers) > 0 and len(self.landed_agents) > 0:
-            passenger = self.passengers.pop(0)
-            agent = self.landed_agents.pop(0)
-            matches.append((agent.id, passenger))
+            if self.landed_agents[0].passenger_target and self.landed_agents[0].passenger_target in self.passengers:
+                passenger = self.landed_agents[0].passenger_target
+                self.passengers.remove(passenger)
+                agent = self.landed_agents.pop(0)
+                matches.append((agent.id, passenger))
+            else:
+                passenger = self.passengers.pop(0)
+                agent = self.landed_agents.pop(0)
+                matches.append((agent.id, passenger))
         self.landed_agents = []
 
         self.time += self.dt
@@ -54,6 +63,17 @@ class Vertiport:
 
     def get_waiting_times(self):
         return [self.time - passenger.start_time for passenger in self.passengers]
+    
+
+    def update_waiting_times(self):
+        self.waiting_times = self.get_waiting_times()
+        for i, passenger in enumerate(self.passengers):
+            passenger.wait_time = self.waiting_times[i]
+    
+
+    def get_passengers(self):
+        self.update_waiting_times()
+        return self.passengers
 
     
     def __repr__(self):
@@ -66,3 +86,4 @@ class Passenger:
         self.start_time = time
         self.origin = origin
         self.destination = destination
+        self.wait_time = 0

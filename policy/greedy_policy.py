@@ -11,27 +11,17 @@ class GreedyPolicy():
     def search(self):
         # find closest vertiport with passengers
         desired_heading = self.obs.vp_headings[self.obs.target]
-        # land = False
-        # desired_heading = self.obs.heading
-        # if self.obs.passenger is not None:
-        #     # go to destination if not at destination
-        #     if self.obs.vp_distances[self.obs.passenger.destination] > 1:
-        #         desired_heading = self.obs.vp_headings[self.obs.passenger.destination]
-        #     else:
-        #         land = True
-        # else:
-        #     min_distance = np.inf
-        #     min_vertiport = Noned
-        #     for i, distance in enumerate(self.obs.vp_distances):
-        #         if self.obs.vp_num_passengers[i] > 0 and distance < min_distance:
-        #             min_distance = distance
-        #             min_vertiport = i
 
-        #     if min_distance < 1:
-        #         land = True
-        #     else:
-        #         if min_vertiport is not None:
-        #             desired_heading = self.obs.vp_headings[min_vertiport]
+        # if agent is grounded and at target, return stay action
+        if self.obs.is_grounded and self.obs.target == np.argmin(self.obs.vp_distances):
+            return eVTOLGroundAction(0, stay=True)
+        
+        if self.obs.is_grounded:
+            return eVTOLGroundAction(desired_heading, stay=False)
+
+        # if target is close land
+        if self.obs.can_land:
+            return eVTOLFlightAction(0, True)
         
         # get closest circular direction to desired heading
         d_theta = (desired_heading - self.obs.heading) % (2 * np.pi)

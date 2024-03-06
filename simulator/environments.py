@@ -215,6 +215,7 @@ class Environment:
         LOS_events = np.any(self.LOS_matrix, axis=1)
         for i, agent in enumerate(self.agents):
             observations.append(eVTOLObservation(agent, self.agent_vertiport_distances[i], self.agent_vertiport_heading[i], self.num_passengers, self.config.VERTIPORT_RADIUS_KM, self.agent_agent_distances[i], self.agent_agent_heading[i], LOS_events[i]))
+        self.observations = observations
         return observations
 
     

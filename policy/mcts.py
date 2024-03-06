@@ -2,35 +2,53 @@ import numpy as np
 import copy
 from profilehooks import profile
 from .actions import eVTOLFlightAction, eVTOLGroundAction, eVTOLNullAction
+from .greedy_policy import GreedyPolicy
 
 FLIGHT_ACTIONS = [
+    eVTOLFlightAction(0, False),
     eVTOLFlightAction(-0.4, False),
     # eVTOLFlightAction(-0.1, False),
-    eVTOLFlightAction(0, False),
     # eVTOLFlightAction(0.1, False),
     eVTOLFlightAction(0.4, False),
     eVTOLFlightAction(0, True)
 ]
 
 GROUND_ACTIONS = [
+    eVTOLGroundAction(0, stay=True),
     eVTOLGroundAction(0),
     eVTOLGroundAction(np.pi / 2),
     eVTOLGroundAction(np.pi),
     eVTOLGroundAction(3 * np.pi / 2),
-    eVTOLGroundAction(0, stay=True)
 ]
 
 
 class MCTSPolicy:
     def __init__(self, observation, idx, env, all_action=None):
-        init_state = MCTSState(observation, idx, env)
+        init_action = all_action[idx] if all_action else None
+        init_actions=None
+        # if init_action:
+        #     # get range around init action
+        #     init_actions = [eVTOLFlightAction(init_action.d_theta-0.2, False), init_action, eVTOLFlightAction(init_action.d_theta+0.2, False)]
+        #     if np.any(observation.can_land):
+        #         init_actions.append(eVTOLFlightAction(0, True))
+
+        self.init_action = init_action
+        init_state = MCTSState(observation, idx, env, init_actions=init_actions)
         self.root = MCTSNode(init_state, all_action=all_action)
         self.idx = idx
-        self.simulations = 100
+        self.simulations = 50#100
         self.search_depth = 3
 
     # @profile
     def search(self, return_list=None):
+        # if agent is grounded and at target, return null action
+        if self.root.state.obs.is_grounded and np.argmin(self.root.state.obs.vp_distances) == self.root.state.obs.target:
+            return eVTOLGroundAction(0, stay=True)
+        
+        # if agent not within 5 units of target, return greedy policy
+        if np.min(self.root.state.obs.agent_distances) > 5:
+            return GreedyPolicy(self.root.state.obs, self.idx, self.root.state.env).search()
+
         for _ in range(self.simulations):
             v = self.tree_policy()
             reward = v.rollout(self.search_depth)
@@ -56,12 +74,13 @@ class MCTSPolicy:
     
 
 class MCTSState:
-    def __init__(self, observation, idx, env, prev_action=eVTOLFlightAction(0, False), depth=0):
+    def __init__(self, observation, idx, env, prev_action=eVTOLFlightAction(0, False), depth=0, init_actions=None):
         self.obs = observation
         self.idx = idx
         self.env = env
         self.prev_action = prev_action
         self.depth = depth
+        self.init_actions = init_actions
 
 
     def reward(self):
@@ -96,8 +115,10 @@ class MCTSState:
     def get_legal_actions(self):
         if self.obs.is_grounded:
             return copy.copy(GROUND_ACTIONS)
+        elif self.init_actions is not None:
+            return self.init_actions
         else:
-            if np.any(self.obs.can_land):
+            if self.obs.can_land:
                 return copy.copy(FLIGHT_ACTIONS)
             else:
                 return copy.copy(FLIGHT_ACTIONS)[:-1]
@@ -150,6 +171,11 @@ class MCTSNode:
         while not rollout_state.is_terminal_state(max_depth):
             all_action_idx = np.random.randint(0, len(FLIGHT_ACTIONS), size=self.state.obs.agent_distances.shape[0])
             all_action = [FLIGHT_ACTIONS[i] for i in all_action_idx]
+
+            # initialize all_action with the best action from the current state
+            all_action = [None for _ in range(self.state.env.config.N_AGENTS)]
+            for i, observation in enumerate(self.state.env.observations):
+                all_action[i] = GreedyPolicy(observation, i, self.state.env).search()
             rollout_state = rollout_state.step(all_action, rollout=rollout_flag)
             rollout_flag = True
         return rollout_state.reward()

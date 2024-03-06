@@ -88,6 +88,10 @@ from matching import *
 # in vertiport scores, consider if area is already covered by other agents
 # account that if close to delviering to a vertiport, agent with passenger can be assigned
 #   to a new passenger
+    # however, this logic must be thoguth through carefully, agents must be assigned, so 
+    # delvering agent can "swipe" from other nearby agents because we must assign next passenger,
+    # even if not optimal
+# maybe not totally random vertiports but clusters based on urban/rural
 
 def simulate(env, policy, matching, plot=True):
     joint_observations = env.reset()
@@ -104,9 +108,10 @@ def simulate(env, policy, matching, plot=True):
         matching_obj = matching(joint_observations, env)
         matching_obj.match()
         for i, agent in enumerate(env.agents):
-            agent.target = matching_obj.targets[i]
+            agent.target = matching_obj.vp_targets[i]
+            agent.passenger_target = matching_obj.passenger_targets[i]
             # update observation target
-            joint_observations[i].target = matching_obj.targets[i]
+            joint_observations[i].update_target(matching_obj.vp_targets[i])
 
         all_action = [None for _ in range(env.config.N_AGENTS)]
         for i, observation in enumerate(joint_observations):
@@ -144,11 +149,12 @@ def simulate(env, policy, matching, plot=True):
 
 
 def run_experiment(config):
-    map = RandomMap(
-        size=config.MAP_SIZE,
-        n_vertiports=config.N_VERTIPORTS,
-        dt=config.D_T,
-        max_passengers=config.MAX_PASSENGERS
+    map = SatMap(
+        config.MAP_SIZE,
+        config.N_VERTIPORTS,
+        config.D_T,
+        config.MAX_PASSENGERS,
+        config.ARRIVAL_RATE,
     )
 
     env = Environment(

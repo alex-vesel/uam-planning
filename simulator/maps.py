@@ -2,22 +2,59 @@ import numpy as np
 import copy
 import pickle
 from sklearn.cluster import KMeans
+import matplotlib.image as mpimg
+from scipy.ndimage import gaussian_filter
 
 from .vertiports import Vertiport
 from .utils import *
 
 
-class RandomMap:
-    def __init__(self, size, n_vertiports, dt, max_passengers, init=True):
+class Map:
+    def __init__(self, size, n_vertiports, dt, max_passengers, arrival_rate, init=True):
         self.size = size
         self.n_vertiports = n_vertiports
         self.dt = dt
         self.max_passengers = max_passengers
         self.vertiports = []
         self.agent_passenger_matching = {}
-        self.max_distance = np.sqrt(2 * size**2)
+        self.max_distance = np.sqrt(2 * size ** 2)
+        self.arrival_rate = arrival_rate
         if init:
             self.generate_map()
+
+
+    def reset(self):
+        pass
+        # self.vertiports = []
+        # self.generate_map()
+
+
+    def update_dt(self, dt):
+        self.dt = dt
+        for vertiport in self.vertiports:
+            vertiport.dt = dt
+
+
+    def step(self):
+        self.agent_passenger_matching = {}
+        for vertiport in self.vertiports:
+            matches = vertiport.step(done_generating=self.done_generating())
+            for id, passenger in matches:
+                self.agent_passenger_matching[id] = passenger
+
+
+    def done(self):
+        return all([len(vp.passengers) == 0 for vp in self.vertiports]) and \
+            np.sum([vp.total_passengers for vp in self.vertiports]) >= self.max_passengers
+    
+
+    def done_generating(self):
+        return np.sum([vp.total_passengers for vp in self.vertiports]) >= self.max_passengers
+    
+
+class RandomMap(Map):
+    def __init__(self, size, n_vertiports, dt, max_passengers, arrival_rate, init=True):
+        super().__init__(size, n_vertiports, dt, max_passengers, arrival_rate, init=init)
 
 
     def generate_map(self):
@@ -40,42 +77,89 @@ class RandomMap:
         self.vp_distances = pairwise_distance(self.vertiports, self.vertiports)
 
 
-    def reset(self):
-        self.vertiports = []
-        self.generate_map()
-
-
-    def update_dt(self, dt):
-        self.dt = dt
-        for vertiport in self.vertiports:
-            vertiport.dt = dt
-
-
-    def step(self):
-        self.agent_passenger_matching = {}
-        # if self.done_generating():
-            # print('done generating')
-            # print([vp.passengers for vp in self.vertiports])
-            # print([vp.total_passengers for vp in self.vertiports])
-        # if self.done():
-            # print('done')
-        for vertiport in self.vertiports:
-            matches = vertiport.step(done_generating=self.done_generating())
-            for id, passenger in matches:
-                self.agent_passenger_matching[id] = passenger
-
-
-    def done(self):
-        return all([len(vp.passengers) == 0 for vp in self.vertiports]) and \
-            np.sum([vp.total_passengers for vp in self.vertiports]) >= self.max_passengers
+    def __deepcopy__(self, memo):
+        new_map = RandomMap(self.size, self.n_vertiports, self.dt, self.max_passengers, self.arrival_rate, init=False)
+        new_map.vertiports = pickle.loads(pickle.dumps(self.vertiports, -1))
+        new_map.vp_distances = self.vp_distances
+        
+        return new_map
     
 
-    def done_generating(self):
-        return np.sum([vp.total_passengers for vp in self.vertiports]) >= self.max_passengers
+class SatMap(Map):
+    def __init__(self, size, n_vertiports, dt, max_passengers, arrival_rate, init=True):
+        if init:
+            # sat_pop = mpimg.imread('./simulator/sf_sat_pop.png')
+            sat_pop = np.load('./simulator/sf_sat_pop.npy')
+            sat_pop = sat_pop[:min(sat_pop.shape[:2]), :min(sat_pop.shape[:2])]
+            self.sat = sat_pop[:, :, :3]
+            self.pop = sat_pop[:, :, 3]
+            self.pop_density = sat_pop[:, :, 4]
+            # smooth population density to remove noise
+            self.pop_density = gaussian_filter(self.pop_density, 30)
+            self.max_x, self.max_y = self.pop.shape
+        super().__init__(size, n_vertiports, dt, max_passengers, arrival_rate, init=init)
+
+
+    def generate_map(self):
+        self.generate_vertiports()
+        self.vp_distances = pairwise_distance(self.vertiports, self.vertiports)
+
+    
+    def generate_vertiports(self):
+        coords = np.zeros((2, self.n_vertiports))
+        # sample based on pop_density_prob, then zero out region according to required population per vertiport
+        pop_per_vp = np.sum(self.pop) / self.n_vertiports
+        pop_prob = self.get_pop_prob()
+        for i in range(self.n_vertiports):
+            sample_locs = np.random.choice(np.arange(self.pop.size), size=1, p=pop_prob)
+            x, y = np.unravel_index(sample_locs, self.pop.shape)
+            x, y = x[0], y[0]
+            coords[0, i], coords[1, i] = x, y
+            # zero out region near coords until pop_density, grow largest radius
+            radius = 50
+            circle = self.get_circle(x, y, radius)
+            while np.sum(self.pop[circle[:, 0], circle[:, 1]]) < pop_per_vp and radius < 150:
+                radius += 15
+                circle = self.get_circle(x, y, radius)
+            self.pop[circle[:, 0], circle[:, 1]] = 0
+
+            pop_prob = self.get_pop_prob()
+
+        # get density of population around each vertiport
+        vp_densities = np.zeros(self.n_vertiports)
+        for i in range(self.n_vertiports):
+            x, y = coords[:, i]
+            vp_densities[i] = self.pop_density[int(x), int(y)]
+
+        # assign arrival rates to each vertiport
+        arrival_rates = np.clip(self.arrival_rate * vp_densities / np.sum(vp_densities), 1, 28).astype(int)
+        print("Vertiport arrival rates: ", arrival_rates)
+
+        self.vertiports = []
+        for i in range(self.n_vertiports):
+            x_orig, y_orig = coords[:, i]
+            y = x_orig / self.max_x * self.size
+            x = y_orig / self.max_y * self.size
+            self.vertiports.append(Vertiport(i, x, y, self.dt, self.n_vertiports, arrival_rates[i]))
+
+
+    def get_circle(self, x, y, radius):
+        circle = []
+        for i in range(-radius, radius + 1):
+            for j in range(-radius, radius + 1):
+                if i**2 + j**2 <= radius**2 and 0 <= x + i < self.max_x and 0 <= y + j < self.max_y:
+                    circle.append((x + i, y + j))
+        return np.array(circle)
+    
+
+    def get_pop_prob(self):
+        pop_prob = self.pop / np.sum(self.pop)
+        pop_prob = pop_prob/ np.sum(pop_prob)
+        return pop_prob.flatten()
 
 
     def __deepcopy__(self, memo):
-        new_map = RandomMap(self.size, self.n_vertiports, self.dt, self.max_passengers, init=False)
+        new_map = SatMap(self.size, self.n_vertiports, self.dt, self.max_passengers, self.arrival_rate, init=False)
         new_map.vertiports = pickle.loads(pickle.dumps(self.vertiports, -1))
         new_map.vp_distances = self.vp_distances
         
