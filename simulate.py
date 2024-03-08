@@ -91,7 +91,8 @@ from matching import *
     # however, this logic must be thoguth through carefully, agents must be assigned, so 
     # delvering agent can "swipe" from other nearby agents because we must assign next passenger,
     # even if not optimal
-# maybe not totally random vertiports but clusters based on urban/rural
+# consider sum of all agent reward in MCTS, allows agents to behave more cooperatively rather than
+    # iteratively greedy
 
 def simulate(env, policy, matching, plot=True):
     joint_observations = env.reset()
@@ -100,7 +101,6 @@ def simulate(env, policy, matching, plot=True):
     all_action_orig = [FLIGHT_ACTIONS[i] for i in all_action_idx]
 
     while not env.done():
-        # print(env.time)
         # print(env.passengers_served)
         # get target destination for each agent
         # matching = GreedyPassengerMatching(joint_observations, env)
@@ -116,6 +116,8 @@ def simulate(env, policy, matching, plot=True):
         all_action = [None for _ in range(env.config.N_AGENTS)]
         for i, observation in enumerate(joint_observations):
             all_action[i] = GreedyPolicy(observation, i, env).search()
+
+        # print(matching_obj.vp_targets)
 
         # all_action = None
 
@@ -150,11 +152,7 @@ def simulate(env, policy, matching, plot=True):
 
 def run_experiment(config):
     map = SatMap(
-        config.MAP_SIZE,
-        config.N_VERTIPORTS,
-        config.D_T,
-        config.MAX_PASSENGERS,
-        config.ARRIVAL_RATE,
+        config
     )
 
     env = Environment(

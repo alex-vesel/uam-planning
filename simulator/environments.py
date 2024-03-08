@@ -42,8 +42,10 @@ class Environment:
     def init_agents(self):
         self.agents = []
         for i in range(self.config.N_AGENTS):
-            x, y = np.random.rand(2) * self.map.size
-            self.agents.append(eVTOL(i, self.config.MAX_SPEED_KMS, self.config.MAX_ACCEL_KMS, x, y))
+            # randomly select vertiport
+            vp_idx = np.random.randint(len(self.map.vertiports))
+            x, y = self.map.vertiports[vp_idx].x, self.map.vertiports[vp_idx].y
+            self.agents.append(eVTOL(i, self.config.MAX_SPEED_KMS, self.config.MAX_ACCEL_KMS, x, y, grounded=True))
 
         
     def reset(self):
@@ -62,7 +64,7 @@ class Environment:
         # check agent vertiport proximity
         self.agent_vertiport_distances = pairwise_distance(self.agents, self.map.vertiports)
         self.agent_vertiport_heading = pairwise_heading(self.agents, self.map.vertiports)
-        self.num_passengers = [len(vertiport.passengers) for vertiport in self.map.vertiports]
+        self.num_passengers = [len(vertiport.cur_passengers) for vertiport in self.map.vertiports]
 
 
     def check_collisions(self):
@@ -200,7 +202,7 @@ class Environment:
         self.passengers_h = self.passengers_served / (self.time / 3600)
         # add remaining passengers to wait times
         for vp in self.map.vertiports:
-            for passenger in vp.passengers:
+            for passenger in vp.cur_passengers:
                 self.passenger_wait_times.append(self.time - passenger.start_time)
         self.avg_wait_time = np.mean(self.passenger_wait_times)
         self.max_wait_time = np.max(self.passenger_wait_times)

@@ -2,6 +2,7 @@ import numpy as np
 import copy
 from sklearn.cluster import KMeans
 from scipy.optimize import linear_sum_assignment
+from .getkBestNoRankHung import getkBestNoRankHung
 
 class ClusterMatching():
     def __init__(self, observations, env):
@@ -16,7 +17,7 @@ class ClusterMatching():
         for i, vp in enumerate(self.env.map.vertiports):
             self.vertiport_scores[i] = vp.arrival_rate_s
 
-        vertiport_num_passengers = [len(vp.passengers) for vp in self.env.map.vertiports]
+        vertiport_num_passengers = [len(vp.cur_passengers) for vp in self.env.map.vertiports]
 
         # get vertiport average
         self.vertiport_avg_scores = []
@@ -67,6 +68,7 @@ class ClusterMatching():
                 # self.unassigned_agents.append(obs.id)
             self.passenger_targets.append(None)
             self.unassigned_agents.append(obs.id)
+        # print(self.unassigned_agents)
 
         cum_jobs = []
         vp_lookup = []
@@ -83,6 +85,7 @@ class ClusterMatching():
 
             # assign penalty for being too far off of even distribution after some time steps
             # only allow delivering agent to pickup passenger if it arrives before you
+            # assign costs based on simulation
 
             # costs = np.zeros((len(self.unassigned_agents), num_jobs))
             costs = np.ones((len(self.unassigned_agents), num_jobs)) * 100000000
@@ -94,8 +97,8 @@ class ClusterMatching():
                         dist = self.env.agent_vertiport_distances[agent_id][cur_target] + \
                             self.env.map.vp_distances[cur_target, i]
                         # if another free agent is closer 
-                        if np.argmin(self.env.agent_vertiport_distances[:, cur_target]) != i:
-                            dist += 10000
+                        # if np.argmin(self.env.agent_vertiport_distances[:, cur_target]) != i:
+                        #     dist += 10000
                     else:
                         dist = self.env.agent_vertiport_distances[agent_id][i]
                     if waiting_times:
@@ -105,17 +108,7 @@ class ClusterMatching():
                                 passenger_travel_dist = self.env.map.vp_distances[i, passenger.destination]
                             # else:
                             #     passenger_travel_dist = self.env.map.max_distance / 2
-                            costs[row_idx, col_idx] = (dist + passenger_travel_dist) / 0.09# - waiting_time# * (1 / self.vertiport_scores[passenger.destination])
-                            # costs[row_idx, col_idx] = dist / (self.vertiport_avg_scores[passenger.destination] + 0.1)
-                            # costs[row_idx, col_idx] -= 100 * self.vertiport_avg_scores[i]
-                            if len(waiting_times) > 1:
-                                costs[row_idx, col_idx] -= 100 * self.vertiport_avg_scores[passenger.destination]
-                            # if vp_difference[self.closest_vertiports[agent_id]] > 0:
-                            #     if i == self.closest_vertiports[agent_id]:
-                            #         costs[row_idx, col_idx] = -100000000
-                            # else:
-                            #     costs[row_idx, col_idx] = -vp_difference[i] * (1/dist)
-                            # print(10000*self.vertiport_scores[passenger.destination])
+                            costs[row_idx, col_idx] = (dist) / 0.09# - waiting_time# * (1 / self.vertiport_scores[passenger.destination])
                             col_idx += 1
                     # else:
                     #     costs[row_idx, col_idx] = 10000000
@@ -123,19 +116,25 @@ class ClusterMatching():
                     #     col_idx += 1
 
             # match agents to vertiports
-            matches = linear_sum_assignment(costs)[1]
-            # print(linear_sum_assignment(costs))
 
-            for i, match in enumerate(matches):
+            matches = linear_sum_assignment(costs)
+            unassigned_indices = list(matches[0])
+            matches = list(matches[1])
+            # if self.env.time == 550:
+            #     import IPython; IPython.embed(); exit(0)
+            # print(linear_sum_assignment(costs))
+            # print(costs)
+
+            for unassigned_idx, match in zip(unassigned_indices, matches):
                 # get the vertiport index from cumulative jobs
                 jobs_idx = np.argmax(cum_jobs > match)
                 vertiport_idx = vp_lookup[jobs_idx]
                 passenger_idx = match - cum_jobs[jobs_idx - 1] if jobs_idx > 0 else match
-                if self.vp_targets[self.unassigned_agents[i]] is None:
-                    self.vp_targets[self.unassigned_agents[i]] = vertiport_idx
+                if self.vp_targets[self.unassigned_agents[unassigned_idx]] is None:
+                    self.vp_targets[self.unassigned_agents[unassigned_idx]] = vertiport_idx
                 if passengers[vertiport_idx]:
                     if passengers[vertiport_idx][passenger_idx]:
-                        self.passenger_targets[self.unassigned_agents[i]] = passengers[vertiport_idx][passenger_idx]
+                        self.passenger_targets[self.unassigned_agents[unassigned_idx]] = passengers[vertiport_idx][passenger_idx]
         
         
         # for each agent get closet vertiport

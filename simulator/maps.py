@@ -10,15 +10,16 @@ from .utils import *
 
 
 class Map:
-    def __init__(self, size, n_vertiports, dt, max_passengers, arrival_rate, init=True):
-        self.size = size
-        self.n_vertiports = n_vertiports
-        self.dt = dt
-        self.max_passengers = max_passengers
+    def __init__(self, config, init=True): 
+        self.config = config
+        self.size = config.MAP_SIZE
+        self.n_vertiports = config.N_VERTIPORTS
+        self.dt = config.D_T
+        self.max_passengers = config.MAX_PASSENGERS
         self.vertiports = []
         self.agent_passenger_matching = {}
-        self.max_distance = np.sqrt(2 * size ** 2)
-        self.arrival_rate = arrival_rate
+        self.max_distance = np.sqrt(2 * config.MAP_SIZE ** 2)
+        self.arrival_rate = config.ARRIVAL_RATE
         if init:
             self.generate_map()
 
@@ -43,8 +44,19 @@ class Map:
                 self.agent_passenger_matching[id] = passenger
 
 
+    def generate_passengers(self):
+        # pregenerate passenger arrival times for consistent testing
+        while not self.done_generating():
+            for vertiport in self.vertiports:
+                vertiport.generate_passengers()
+        # reset time
+        for vertiport in self.vertiports:
+            vertiport.time = 0
+            vertiport.total_passengers = 0
+
+
     def done(self):
-        return all([len(vp.passengers) == 0 for vp in self.vertiports]) and \
+        return all([len(vp.cur_passengers) == 0 for vp in self.vertiports]) and \
             np.sum([vp.total_passengers for vp in self.vertiports]) >= self.max_passengers
     
 
@@ -53,8 +65,8 @@ class Map:
     
 
 class RandomMap(Map):
-    def __init__(self, size, n_vertiports, dt, max_passengers, arrival_rate, init=True):
-        super().__init__(size, n_vertiports, dt, max_passengers, arrival_rate, init=init)
+    def __init__(self, config, init=True):
+        super().__init__(config, init=init)
 
 
     def generate_map(self):
@@ -74,11 +86,13 @@ class RandomMap(Map):
             x, y = locations[i]
             self.vertiports.append(Vertiport(i, x, y, self.dt, self.n_vertiports, arrival_rates[i]))
 
+        self.generate_passengers()
+
         self.vp_distances = pairwise_distance(self.vertiports, self.vertiports)
 
 
     def __deepcopy__(self, memo):
-        new_map = RandomMap(self.size, self.n_vertiports, self.dt, self.max_passengers, self.arrival_rate, init=False)
+        new_map = RandomMap(self.config, init=False)
         new_map.vertiports = pickle.loads(pickle.dumps(self.vertiports, -1))
         new_map.vp_distances = self.vp_distances
         
@@ -86,7 +100,7 @@ class RandomMap(Map):
     
 
 class SatMap(Map):
-    def __init__(self, size, n_vertiports, dt, max_passengers, arrival_rate, init=True):
+    def __init__(self, config, init=True):
         if init:
             # sat_pop = mpimg.imread('./simulator/sf_sat_pop.png')
             sat_pop = np.load('./simulator/sf_sat_pop.npy')
@@ -97,11 +111,12 @@ class SatMap(Map):
             # smooth population density to remove noise
             self.pop_density = gaussian_filter(self.pop_density, 30)
             self.max_x, self.max_y = self.pop.shape
-        super().__init__(size, n_vertiports, dt, max_passengers, arrival_rate, init=init)
+        super().__init__(config, init=init)
 
 
     def generate_map(self):
         self.generate_vertiports()
+        self.generate_passengers()
         self.vp_distances = pairwise_distance(self.vertiports, self.vertiports)
 
     
@@ -159,7 +174,7 @@ class SatMap(Map):
 
 
     def __deepcopy__(self, memo):
-        new_map = SatMap(self.size, self.n_vertiports, self.dt, self.max_passengers, self.arrival_rate, init=False)
+        new_map = SatMap(self.config, init=False)
         new_map.vertiports = pickle.loads(pickle.dumps(self.vertiports, -1))
         new_map.vp_distances = self.vp_distances
         

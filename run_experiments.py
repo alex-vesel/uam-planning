@@ -2,6 +2,7 @@ import os
 import copy
 import json
 import numpy as np
+import pandas as pd
 from simulate import run_experiment
 from config import Config
 from utils import get_exp_dir
@@ -37,3 +38,14 @@ for i in range(10):
 
     with open(os.path.join(out_dir, f"exp_{i}.json"), "w") as f:
         json.dump(exp_json, f)
+
+# open results and get avg/std
+results = []
+for i in range(3):
+    with open(os.path.join(out_dir, f"exp_{i}.json"), "r") as f:
+        results.append(json.load(f))
+
+results = pd.DataFrame(results)
+
+for col in results.columns:
+    print(f"{col}: {results[col].mean()} +/- {results[col].std()}")

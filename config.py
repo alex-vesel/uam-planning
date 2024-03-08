@@ -1,7 +1,7 @@
 import numpy as np
 from simulator import ms_to_kms
 
-np.random.seed(15)
+np.random.seed(40)
 
 class Config():
     ## Meta params
@@ -9,16 +9,16 @@ class Config():
 
     ## Simulator parameters
     N_VERTIPORTS = 5
-    N_AGENTS = 10
+    N_AGENTS = 20
     MAP_SIZE = 120           # km
     D_T = 10              # s
     MAX_TIME = 20000          # s
-    MAX_PASSENGERS = 20
-    ARRIVAL_RATE_SCALE = 0.7    # how many times nominal total inflow rate
+    MAX_PASSENGERS = 8 * N_AGENTS
+    ARRIVAL_RATE_SCALE = 1  # how many times nominal total inflow rate
 
     # Policy parameters
-    POLICY = "mcts"
-    MATCHING = "greedy"
+    POLICY = "greedy"
+    MATCHING = "cluster"
 
     ## Safety parameters
     EVENT_COOLDOWN = 60       # s

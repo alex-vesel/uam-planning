@@ -6,6 +6,7 @@ class eVTOL():
                  max_accel,
                  x_init,
                  y_init,
+                 grounded=False
                 ):
         self.id = id
         self.speed = max_speed
@@ -15,7 +16,7 @@ class eVTOL():
         self.y = y_init
         self.passenger = None
         self.theta = 0
-        self.grounded = False
+        self.grounded = grounded
         self.target = None
 
         # recording attributes
