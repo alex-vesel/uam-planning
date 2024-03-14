@@ -58,15 +58,19 @@ for config in exp_iterator():
             "max_wait_time": float(env.max_wait_time)
         }
 
-        with open(os.path.join(exp_dir, f"exp_{i}.json"), "w") as f:
+        run_dir = os.path.join(exp_dir, f"{i}")
+        os.makedirs(run_dir, exist_ok=True)
+
+        with open(os.path.join(exp_dir, f"exp.json"), "w") as f:
             json.dump(exp_json, f)
 
-        pickle.dump(env, open(os.path.join(exp_dir, f"env_{i}.pkl"), "wb"))
+        pickle.dump(env, open(os.path.join(exp_dir, f"env.pkl"), "wb"))
 
     # open results and get avg/std
     results = []
     for i in range(10):
-        with open(os.path.join(exp_dir, f"exp_{i}.json"), "r") as f:
+        run_dir = os.path.join(exp_dir, f"{i}")
+        with open(os.path.join(run_dir, f"exp.json"), "r") as f:
             results.append(json.load(f))
 
     results = pd.DataFrame(results)
