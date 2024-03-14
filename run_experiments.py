@@ -1,6 +1,7 @@
 import os
 import copy
 import json
+import pickle
 import numpy as np
 import pandas as pd
 from simulate import run_experiment
@@ -35,6 +36,7 @@ def exp_iterator():
 # run experiments
 for config in exp_iterator():
     exp_dir = get_exp_dir(config)
+    os.makedirs(exp_dir, exist_ok=True)
     print(f"Running experiment with config: {config.__dict__}")
     for i in range(10):
         np.random.seed(i)
@@ -58,6 +60,8 @@ for config in exp_iterator():
 
         with open(os.path.join(exp_dir, f"exp_{i}.json"), "w") as f:
             json.dump(exp_json, f)
+
+        pickle.dump(env, open(os.path.join(exp_dir, f"env_{i}.pkl"), "wb"))
 
     # open results and get avg/std
     results = []

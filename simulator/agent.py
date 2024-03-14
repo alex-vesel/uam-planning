@@ -24,9 +24,9 @@ class eVTOL():
 
 
     def step(self, d_t, action, passenger=None):
+        self.trip_distance += self.speed * d_t
         if passenger != self.passenger:
             self.trip_distance = 0
-        self.trip_distance += self.speed * d_t
         self.passenger = passenger
 
         if action.is_flight_action:

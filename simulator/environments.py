@@ -138,7 +138,7 @@ class Environment:
                 if delivered_passenger:
                     passenger = None
                     self.passengers_served += 1
-                    self.trip_distances.append((agent.trip_distance, self.map.vp_distances[agent.passenger.origin, agent.passenger.destination]))
+                    self.trip_distances.append((agent.trip_distance, self.map.vp_distances[agent.passenger.origin, agent.passenger.destination] - 2 * self.config.VERTIPORT_RADIUS_KM))
 
             if agent.id in self.map.agent_passenger_matching:
                 passenger = self.map.agent_passenger_matching[agent.id]
