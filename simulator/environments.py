@@ -112,8 +112,7 @@ class Environment:
         #     print(actions)
 
         # step map
-        if step_map:
-            self.map.step()
+        self.map.step(step=step_map)
 
         if verbose:
             print(self.map.agent_passenger_matching)
@@ -231,6 +230,9 @@ class Environment:
         new_env.time = self.time
         new_env.agent_vertiport_distances = pickle.loads(pickle.dumps(self.agent_vertiport_distances, -1))
         new_env.agent_vertiport_heading = pickle.loads(pickle.dumps(self.agent_vertiport_heading, -1))
+        new_env.passengers_served = self.passengers_served
+        new_env.plotter = Plotter(new_env)
+        new_env.LOS_events = self.LOS_events
 
         return new_env
 

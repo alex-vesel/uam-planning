@@ -1,24 +1,28 @@
 import numpy as np
 from simulator import ms_to_kms
 
-np.random.seed(40)
+np.random.seed(20924)
 
 class Config():
     ## Meta params
-    PLOT = False
+    PLOT = True
 
     ## Simulator parameters
-    N_VERTIPORTS = 5
-    N_AGENTS = 20
-    MAP_SIZE = 120           # km
+    N_VERTIPORTS = 24
+    N_AGENTS = 120
+    MAP_SIZE = 40           # km
     D_T = 10              # s
     MAX_TIME = 20000          # s
-    MAX_PASSENGERS = 8 * N_AGENTS
+    MAX_PASSENGERS = 10 * N_AGENTS
     ARRIVAL_RATE_SCALE = 1  # how many times nominal total inflow rate
+    MAP_TYPE = "sf"
 
     # Policy parameters
     POLICY = "greedy"
-    MATCHING = "cluster"
+    # MATCHING = 'lookahead'
+    # MATCHING = "cluster"
+    # MATCHING = "hungarian"
+    MATCHING = "greedy"
 
     ## Safety parameters
     EVENT_COOLDOWN = 60       # s
@@ -41,5 +45,30 @@ class Config():
     avg_trip_time = avg_trip_distance / MAX_SPEED_KMS
     evtol_trips_per_hr = 3600 / avg_trip_time
     ARRIVAL_RATE = int(N_AGENTS * evtol_trips_per_hr * ARRIVAL_RATE_SCALE)
-    print(ARRIVAL_RATE)
-    
+    print("Network passenger arrival rate: ", ARRIVAL_RATE)
+
+    if MAP_TYPE == "sf":
+        MAP_SIZE = 120
+    elif MAP_TYPE == "nyc":
+        MAP_SIZE = 40
+
+
+def config_calculations(config):
+    config.MAX_SPEED_KMS = ms_to_kms(config.MAX_SPEED_MS)
+    config.MAX_ACCEL_KMS = ms_to_kms(config.MAX_ACCEL_MS)
+    config.VERTIPORT_RADIUS_KM = config.VERTIPORT_RADIUS / 1000
+
+    avg_trip_distance = 2 * config.MAP_SIZE / 3
+    avg_trip_time = avg_trip_distance / config.MAX_SPEED_KMS
+    evtol_trips_per_hr = 3600 / avg_trip_time
+    config.ARRIVAL_RATE = int(config.N_AGENTS * evtol_trips_per_hr * config.ARRIVAL_RATE_SCALE)
+    print("Network passenger arrival rate: ", config.ARRIVAL_RATE)
+
+    if config.MAP_TYPE == "sf":
+        config.MAP_SIZE = 120
+    elif config.MAP_TYPE == "nyc":
+        config.MAP_SIZE = 40
+
+
+if __name__ == "__main__":
+    config = Config()

@@ -117,6 +117,8 @@ def simulate(env, policy, matching, plot=True):
         for i, observation in enumerate(joint_observations):
             all_action[i] = GreedyPolicy(observation, i, env).search()
 
+        # prev_matching = matching_obj.vp_targets
+
         # print(matching_obj.vp_targets)
 
         # all_action = None
@@ -151,9 +153,14 @@ def simulate(env, policy, matching, plot=True):
 
 
 def run_experiment(config):
-    map = SatMap(
-        config
-    )
+    if config.MAP_TYPE == "random":
+        map = RandomMap(
+            config
+        )
+    else:
+        map = SatMap(
+            config
+        )
 
     env = Environment(
         map=map,
@@ -167,8 +174,12 @@ def run_experiment(config):
 
     if config.MATCHING == "greedy":
         matching = GreedyPassengerMatching
+    elif config.MATCHING == "hungarian":
+        matching = HungarianMatching
+    elif config.MATCHING == "lookahead":
+        matching = LookaheadMatching
     else:
-        matching = ClusterMatching
+        matching = MCTSHungarianMatching
 
     start = time()
     simulate(env, policy, matching, plot=config.PLOT)

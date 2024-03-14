@@ -32,10 +32,11 @@ class Vertiport:
         self.time += self.dt
 
 
-    def step(self, done_generating=False):
-        for passenger in self.passenger_arrivals[self.time]:
-            self.total_passengers += 1
-            self.cur_passengers.append(passenger)
+    def step(self, done_generating=False, step_passengers=True):
+        if step_passengers:
+            for passenger in self.passenger_arrivals[self.time]:
+                self.total_passengers += 1
+                self.cur_passengers.append(passenger)
         # add 60 second loading time
         # add fixed number of landing strips
         matches = []

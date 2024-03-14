@@ -36,10 +36,10 @@ class Map:
             vertiport.dt = dt
 
 
-    def step(self):
+    def step(self, step=True):
         self.agent_passenger_matching = {}
         for vertiport in self.vertiports:
-            matches = vertiport.step(done_generating=self.done_generating())
+            matches = vertiport.step(done_generating=self.done_generating(), step_passengers=step)
             for id, passenger in matches:
                 self.agent_passenger_matching[id] = passenger
 
@@ -102,8 +102,10 @@ class RandomMap(Map):
 class SatMap(Map):
     def __init__(self, config, init=True):
         if init:
-            # sat_pop = mpimg.imread('./simulator/sf_sat_pop.png')
-            sat_pop = np.load('./simulator/sf_sat_pop.npy')
+            if config.MAP_TYPE == 'sf':
+                sat_pop = np.load('./simulator/sf_sat_pop.npy')
+            elif config.MAP_TYPE == 'nyc':
+                sat_pop = np.load('./simulator/nyc_sat_pop.npy')
             sat_pop = sat_pop[:min(sat_pop.shape[:2]), :min(sat_pop.shape[:2])]
             self.sat = sat_pop[:, :, :3]
             self.pop = sat_pop[:, :, 3]
@@ -177,6 +179,7 @@ class SatMap(Map):
         new_map = SatMap(self.config, init=False)
         new_map.vertiports = pickle.loads(pickle.dumps(self.vertiports, -1))
         new_map.vp_distances = self.vp_distances
+        new_map.sat = self.sat
         
         return new_map
 
