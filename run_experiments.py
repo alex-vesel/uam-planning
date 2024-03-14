@@ -61,10 +61,10 @@ for config in exp_iterator():
         run_dir = os.path.join(exp_dir, f"{i}")
         os.makedirs(run_dir, exist_ok=True)
 
-        with open(os.path.join(exp_dir, f"exp.json"), "w") as f:
+        with open(os.path.join(run_dir, f"exp.json"), "w") as f:
             json.dump(exp_json, f)
 
-        pickle.dump(env, open(os.path.join(exp_dir, f"env.pkl"), "wb"))
+        pickle.dump(env, open(os.path.join(run_dir, f"env.pkl"), "wb"))
 
     # open results and get avg/std
     results = []

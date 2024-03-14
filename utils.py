@@ -2,6 +2,7 @@ import os
 
 def get_exp_dir(config):
     return os.path.join(
+        "outputs",
         f"policy_{config.POLICY}",
         f"matching_{config.MATCHING}",
         f"map_type_{config.MAP_TYPE}",
