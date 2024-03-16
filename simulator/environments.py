@@ -68,20 +68,6 @@ class Environment:
 
 
     def check_collisions(self):
-        # check agent collisions
-        # for i, agent in enumerate(self.agents):
-        #     for j, other_agent in enumerate(self.agents):
-        #         if j <= i:
-        #             continue
-        #         self.event_cooldown[i, j] = max(0, self.event_cooldown[i, j] - self.dt)
-        #         if self.event_cooldown[i, j] == 0:
-        #             if self.agent_agent_distances[i, j] < self.config.NMAC_DIST:
-        #                 self.NMAC_events += 1
-        #                 self.event_cooldown[i, j] = self.config.EVENT_COOLDOWN
-        #             if self.agent_agent_distances[i, j] < self.config.LOS_DIST:
-        #                 self.LOS_events += 1
-        #                 self.event_cooldown[i, j] = self.config.EVENT_COOLDOWN
-
         # check agent collisions       
         self.LOS_matrix = self.agent_agent_distances
         np.fill_diagonal(self.LOS_matrix, np.inf)

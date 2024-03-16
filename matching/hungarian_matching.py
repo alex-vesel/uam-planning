@@ -96,12 +96,13 @@ class HungarianMatching():
             if self.costs.shape[1] < self.costs.shape[0]:
                 its = 0
                 cost = self.prev_cost
-                while abs(cost - self.prev_cost) < 0.00001 and its < 5000 and self.ok:
+                while abs(cost - self.prev_cost) < 0.00001 and its < 100 and self.ok:
                     self.ok, cost, sol = self.m.draw()
                     its += 1
                 # print(cost, self.prev_cost, abs(cost - self.prev_cost))
                 self.prev_cost = cost
                 if not self.ok:
+                    self.assign_unassigned_agents()
                     return None, None
                 # print(self.env.time, cost, sol)
                 unassigned_indices = sol.tolist()
@@ -109,12 +110,13 @@ class HungarianMatching():
             else:
                 its = 0
                 cost = self.prev_cost
-                while abs(cost - self.prev_cost) < 0.00001 and its < 5000 and self.ok:
+                while abs(cost - self.prev_cost) < 0.00001 and its < 100 and self.ok:
                     self.ok, cost, sol = self.m.draw()
                     its += 1
                 # print(cost, self.prev_cost, abs(cost - self.prev_cost))
                 self.prev_cost = cost
                 if not self.ok:
+                    self.assign_unassigned_agents()
                     return None, None
                 matches = sol.tolist()
                 unassigned_indices = list(range(self.costs.shape[0]))
@@ -139,12 +141,16 @@ class HungarianMatching():
                         self.passenger_targets[self.unassigned_agents[unassigned_idx]] = self.passengers[vertiport_idx][passenger_idx]
 
         # for agents still unassigned, assign to nearest vertiport
-        for i, target in enumerate(self.vp_targets):
-            if target is None:
-                self.vp_targets[i] = int(self.agent_to_vp[i])
+        self.assign_unassigned_agents()
                 # self.vp_targets[i] = np.argmin(self.env.agent_vertiport_distances[i])
 
         return self.vp_targets, self.passenger_targets
+    
+
+    def assign_unassigned_agents(self):
+        for i, target in enumerate(self.vp_targets):
+            if target is None:
+                self.vp_targets[i] = int(self.agent_to_vp[i])
     
 
     def get_agents_per_vp(self):

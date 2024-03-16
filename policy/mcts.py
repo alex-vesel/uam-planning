@@ -37,7 +37,7 @@ class MCTSPolicy:
         self.root = MCTSNode(init_state, all_action=all_action)
         self.idx = idx
         self.simulations = 50#100
-        self.search_depth = 3
+        self.search_depth = 4
 
     # @profile
     def search(self, return_list=None):
@@ -45,7 +45,7 @@ class MCTSPolicy:
         if self.root.state.obs.is_grounded and np.argmin(self.root.state.obs.vp_distances) == self.root.state.obs.target:
             return eVTOLGroundAction(0, stay=True)
         
-        # if agent not within 5 units of target, return greedy policy
+        # if agent not within 5 units of other agents, return greedy policy
         if np.min(self.root.state.obs.agent_distances) > 5:
             return GreedyPolicy(self.root.state.obs, self.idx, self.root.state.env).search()
 
@@ -94,22 +94,7 @@ class MCTSState:
         if self.obs.is_conflict:
             return -100
         
-        # if self.obs.has_new_passenger:
-        #     return 10
-        
-        # if self.obs.delivered_passenger:
-        #     return 10
-        
-        # turn_penalty = -0.01 * self.prev_action.d_theta ** 2
-        turn_penalty = 0
-
-        # if self.obs.passenger:
-        #     # get distance to destination
-        #     dest_dist = np.sqrt((self.obs.x - self.env.map.vertiports[self.obs.passenger.destination].x) ** 2 + (self.obs.y - self.env.map.vertiports[self.obs.passenger.destination].y) ** 2)
-        #     max_size = np.sqrt(2 * self.env.map.size ** 2)
-        #     return 1 / (dest_dist + 1) + turn_penalty
-        # else:
-        return 1 / (target_dist + 1) + turn_penalty
+        return 1 / (target_dist + 1)
 
 
     def get_legal_actions(self):
@@ -169,8 +154,8 @@ class MCTSNode:
         rollout_state = self.state
         rollout_flag = False
         while not rollout_state.is_terminal_state(max_depth):
-            all_action_idx = np.random.randint(0, len(FLIGHT_ACTIONS), size=self.state.obs.agent_distances.shape[0])
-            all_action = [FLIGHT_ACTIONS[i] for i in all_action_idx]
+            # all_action_idx = np.random.randint(0, len(FLIGHT_ACTIONS), size=self.state.obs.agent_distances.shape[0])
+            # all_action = [FLIGHT_ACTIONS[i] for i in all_action_idx]
 
             # initialize all_action with the best action from the current state
             all_action = [None for _ in range(self.state.env.config.N_AGENTS)]

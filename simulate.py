@@ -118,22 +118,78 @@ def simulate(env, policy, matching, plot=True):
             all_action[i] = GreedyPolicy(observation, i, env).search()
 
         # prev_matching = matching_obj.vp_targets
+        
+        # new_env = copy.deepcopy(env)
+        # new_obs = copy.deepcopy(joint_observations)
+        # conflict_ids = set()
+        # for future_time in range(6):
+        #     actions = []
+        #     for i, agent in enumerate(new_env.agents):
+        #         agent.target = matching_obj.vp_targets[i]
+        #         agent.passenger_target = matching_obj.passenger_targets[i]
+        #         new_obs[i].update_target(matching_obj.vp_targets[i])
+        #         actions.append(GreedyPolicy(new_obs[i], i, new_env).search())
+        #     new_obs = new_env.step(actions, step_map=False)
+        #     for obs in new_obs:
+        #         if obs.is_conflict:
+        #             conflict_ids.add(obs.id)
 
-        # print(matching_obj.vp_targets)
+        # # get action for each agent
+        # for i, observation in enumerate(joint_observations):
+        #     if i in conflict_ids:
+        #         action = policy(observation, i, copy.deepcopy(env), all_action=all_action).search()
+        #         all_action[i] = action
 
-        # all_action = None
+        # new_env = copy.deepcopy(env)
+        # new_obs = new_env.step(all_action, step_map=False)
+        # new_matching_obj = matching(new_obs, new_env)
+        # new_matching_obj.match()
 
-        # score = MatchingScore(joint_observations, copy.deepcopy(env)).score()
+        # difference = False
+        # # valid reasons for being different are just picked up a passenger or just delivered a passenger
+        # for i, cur_agent, future_agent in zip(range(env.config.N_AGENTS), env.agents, new_env.agents):
+        #     if (cur_agent.passenger and not future_agent.passenger) or (not cur_agent.passenger and future_agent.passenger):
+        #         continue
+        #     if matching_obj.vp_targets[i] != new_matching_obj.vp_targets[i]:
+        #         difference = True
+        #         break
 
-        # get action for each agent
-        actions = []
-        for i, observation in enumerate(joint_observations):
-            action = policy(observation, i, copy.deepcopy(env), all_action=all_action).search()
-            all_action[i] = action
-            actions.append(action)
+        # old_all_action = all_action
+
+        # if difference:
+        #     for i, agent in enumerate(env.agents):
+        #         agent.target = new_matching_obj.vp_targets[i]
+        #         agent.passenger_target = new_matching_obj.passenger_targets[i]
+        #         joint_observations[i].update_target(new_matching_obj.vp_targets[i])
+
+        #     all_action = [None for _ in range(env.config.N_AGENTS)]
+        #     for i, observation in enumerate(joint_observations):
+        #         all_action[i] = GreedyPolicy(observation, i, env).search()
+
+        #     new_env = copy.deepcopy(env)
+        #     new_obs = new_env.step(all_action, step_map=False)
+        #     conflict_ids = set()
+        #     for future_time in range(4):
+        #         actions = []
+        #         for i, agent in enumerate(new_env.agents):
+        #             agent.target = new_matching_obj.vp_targets[i]
+        #             agent.passenger_target = new_matching_obj.passenger_targets[i]
+        #             new_obs[i].update_target(new_matching_obj.vp_targets[i])
+        #             actions.append(GreedyPolicy(new_obs[i], i, new_env).search())
+        #         new_obs = new_env.step(actions, step_map=False)
+        #         for obs in new_obs:
+        #             if obs.is_conflict:
+        #                 conflict_ids.add(obs.id)
+
+        #     for i, observation in enumerate(joint_observations):
+        #         if i in conflict_ids:
+        #             action = policy(observation, i, copy.deepcopy(env), all_action=all_action).search()
+        #             old_all_action[i] = action
+        #     all_action = old_all_action
+
 
         # execute action and step environment
-        joint_observations = env.step(actions, verbose=False)
+        joint_observations = env.step(all_action, verbose=False)
         if plot:
             env.plot()
 

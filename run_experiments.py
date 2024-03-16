@@ -9,15 +9,15 @@ from config import Config, config_calculations
 from utils import get_exp_dir
 
 policies = ['greedy']
-matchings = ['greedy']
-vertiport_agents = [(5, 10), (20, 8), (40, 12), (80, 16), (120, 24), (200, 30), (400, 40)]
+matchings = ['lookahead']
+vertiport_agents = [(10, 5), (20, 8), (40, 12), (80, 16), (120, 24), (200, 30), (400, 30)]
 arrival_rates = [1]
 map_types = ['sf', 'nyc']
 
 def exp_iterator():
     for policy in policies:
         for matching in matchings:
-            for N_VERTIPORTS, N_AGENTS in vertiport_agents:
+            for N_AGENTS, N_VERTIPORTS in vertiport_agents:
                 for ARRIVAL_RATE_SCALE in arrival_rates:
                     for MAP_TYPE in map_types:
                         config = copy.deepcopy(Config)
@@ -25,6 +25,8 @@ def exp_iterator():
                         config.MATCHING = matching
                         config.N_AGENTS = N_AGENTS
                         config.N_VERTIPORTS = N_VERTIPORTS
+                        if MAP_TYPE == 'nyc':
+                            config.N_VERTIPORTS = min(config.N_VERTIPORTS, 16)
                         config.ARRIVAL_RATE_SCALE = ARRIVAL_RATE_SCALE
                         config.MAP_TYPE = MAP_TYPE
                         config.MAX_PASSENGERS = 10 * N_AGENTS
@@ -38,7 +40,11 @@ for config in exp_iterator():
     exp_dir = get_exp_dir(config)
     os.makedirs(exp_dir, exist_ok=True)
     print(f"Running experiment with config: {config.__dict__}")
-    for i in range(10):
+    if config.N_AGENTS > 100:
+        num_exp = 5
+    else:
+        num_exp = 10
+    for i in range(num_exp):
         np.random.seed(i)
 
         # run experiment
@@ -64,11 +70,12 @@ for config in exp_iterator():
         with open(os.path.join(run_dir, f"exp.json"), "w") as f:
             json.dump(exp_json, f)
 
-        pickle.dump(env, open(os.path.join(run_dir, f"env.pkl"), "wb"))
+        pickle.dump(env.trip_distances, open(os.path.join(run_dir, f"trip_distances.pkl"), "wb"))
+        pickle.dump(env.passenger_wait_times, open(os.path.join(run_dir, f"passenger_wait_times.pkl"), "wb"))
 
     # open results and get avg/std
     results = []
-    for i in range(10):
+    for i in range(num_exp):
         run_dir = os.path.join(exp_dir, f"{i}")
         with open(os.path.join(run_dir, f"exp.json"), "r") as f:
             results.append(json.load(f))
