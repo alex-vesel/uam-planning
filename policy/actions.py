@@ -6,6 +6,7 @@ class eVTOLFlightAction():
         self.d_theta = d_theta
         self.land = land
         self.is_flight_action = True
+        self.flight_level = None
 
     
     def __repr__(self):
@@ -21,6 +22,7 @@ class eVTOLGroundAction():
         self.land = False
         self.is_flight_action = False
         self.stay = stay
+        self.flight_level = None
 
 
     def __repr__(self):

@@ -45,7 +45,7 @@ class Environment:
             # randomly select vertiport
             vp_idx = np.random.randint(len(self.map.vertiports))
             x, y = self.map.vertiports[vp_idx].x, self.map.vertiports[vp_idx].y
-            self.agents.append(eVTOL(i, self.config.MAX_SPEED_KMS, self.config.MAX_ACCEL_KMS, x, y, grounded=True))
+            self.agents.append(eVTOL(i, self.config.MAX_SPEED_KMS, x, y, grounded=True))
 
         
     def reset(self):
@@ -83,8 +83,14 @@ class Environment:
         self.event_cooldown[grounded_agents] = 20
         self.event_cooldown[:, grounded_agents] = 20
 
-        self.LOS_matrix = self.LOS_matrix & (self.event_cooldown == 0)
-        self.NMAC_matrix = self.NMAC_matrix & (self.event_cooldown == 0)
+        self.same_flight_level = np.zeros((self.config.N_AGENTS, self.config.N_AGENTS))
+        flight_levels = np.array([agent.flight_level for agent in self.agents])
+        for i, agent in enumerate(self.agents):
+            self.same_flight_level[i] = agent.flight_level == flight_levels
+        self.same_flight_level = self.same_flight_level.astype(bool)
+
+        self.LOS_matrix = self.LOS_matrix & (self.event_cooldown == 0) & (self.same_flight_level)
+        self.NMAC_matrix = self.NMAC_matrix & (self.event_cooldown == 0) & (self.same_flight_level)
         LOS_idx = np.argwhere(self.LOS_matrix)
         NMAC_idx = np.argwhere(self.NMAC_matrix)
         self.LOS_events += len(LOS_idx)
@@ -206,8 +212,8 @@ class Environment:
         return observations
 
     
-    def plot(self):
-        self.plotter.plot()
+    def plot(self, prev_envs=None):
+        self.plotter.plot(prev_envs=prev_envs)
 
 
     def __deepcopy__(self, memo):
@@ -227,7 +233,6 @@ class Environment:
 
 if __name__ == '__main__':
     max_speed = ms_to_kms(90)   # m/s
-    max_accel = ms_to_kms(10)   # m/s^2
     n_agents = 10                # number of agents
     map_size = 100               # km
     n_vertiports = 10           # number of vertiports
@@ -238,7 +243,7 @@ if __name__ == '__main__':
     agents = []
     for i in range(n_agents):
         x, y = np.random.rand(2) * map_size
-        agents.append(eVTOL(i, max_speed, max_accel, x, y))
+        agents.append(eVTOL(i, max_speed, x, y))
     simulator = Environment(map, d_t=d_t, agents=agents)
     for _ in range(100):
         simulator.step()

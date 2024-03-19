@@ -10,40 +10,50 @@ from utils import get_exp_dir
 
 policies = ['greedy']
 matchings = ['lookahead']
-vertiport_agents = [(10, 5), (20, 8), (40, 12), (80, 16), (120, 24), (200, 30), (400, 30)]
+# vertiport_agents = [(10, 5), (20, 8), (40, 12), (80, 16), (120, 24), (200, 30), (400, 30)]
+# vertiport_agents = [(10, 5), (20, 8), (40, 12), (80, 16)]
+# vertiport_agents = [(100, 20), (200, 20), (300, 20)]
+# vertiport_agents = [(80, 16)]
+vertiport_agents = [(100, 16)]
 arrival_rates = [1]
-map_types = ['sf', 'nyc']
+# map_types = ['sf', 'nyc']
+map_types = ['nyc']
+flight_levels = [4]
 
 def exp_iterator():
-    for policy in policies:
-        for matching in matchings:
-            for N_AGENTS, N_VERTIPORTS in vertiport_agents:
-                for ARRIVAL_RATE_SCALE in arrival_rates:
-                    for MAP_TYPE in map_types:
-                        config = copy.deepcopy(Config)
-                        config.POLICY = policy
-                        config.MATCHING = matching
-                        config.N_AGENTS = N_AGENTS
-                        config.N_VERTIPORTS = N_VERTIPORTS
-                        if MAP_TYPE == 'nyc':
-                            config.N_VERTIPORTS = min(config.N_VERTIPORTS, 16)
-                        config.ARRIVAL_RATE_SCALE = ARRIVAL_RATE_SCALE
-                        config.MAP_TYPE = MAP_TYPE
-                        config.MAX_PASSENGERS = 10 * N_AGENTS
-                        config.PLOT = False
-                        config_calculations(config)
-                        yield config
+    for flight_level in flight_levels:
+        for policy in policies:
+            for matching in matchings:
+                for N_AGENTS, N_VERTIPORTS in vertiport_agents:
+                    for ARRIVAL_RATE_SCALE in arrival_rates:
+                        for MAP_TYPE in map_types:
+                            config = copy.deepcopy(Config)
+                            config.N_FLIGHT_LEVELS = flight_level
+                            config.POLICY = policy
+                            config.MATCHING = matching
+                            config.N_AGENTS = N_AGENTS
+                            config.N_VERTIPORTS = N_VERTIPORTS
+                            if MAP_TYPE == 'nyc':
+                                config.N_VERTIPORTS = min(config.N_VERTIPORTS, 16)
+                            config.ARRIVAL_RATE_SCALE = ARRIVAL_RATE_SCALE
+                            config.MAP_TYPE = MAP_TYPE
+                            config.MAX_PASSENGERS = 10 * N_AGENTS
+                            config.PLOT = False
+                            config_calculations(config)
+                            yield config
 
 
 # run experiments
 for config in exp_iterator():
     exp_dir = get_exp_dir(config)
+    # exp_dir += "random_flight_levels/"
     os.makedirs(exp_dir, exist_ok=True)
     print(f"Running experiment with config: {config.__dict__}")
     if config.N_AGENTS > 100:
         num_exp = 5
     else:
         num_exp = 10
+    # num_exp = 8
     for i in range(num_exp):
         np.random.seed(i)
 

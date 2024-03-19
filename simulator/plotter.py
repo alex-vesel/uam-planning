@@ -3,6 +3,13 @@ import cv2
 import os
 from PIL import Image
 
+FLIGHT_LEVEL_COLORS = {
+    0: (255, 0, 0),
+    1: (170, 0, 0),
+    2: (85, 0, 0),
+    3: (42, 0, 0),
+}
+
 class Plotter():
     def __init__(self, sim):
         self.sim = sim
@@ -20,7 +27,7 @@ class Plotter():
         os.makedirs('./simulator/frames', exist_ok=True)
 
 
-    def plot(self):
+    def plot(self, prev_envs=None):
         # create an image of size contained in map
         img = 255 * np.ones((self.img_size, self.img_size, 3), dtype=np.uint8)
         
@@ -36,9 +43,8 @@ class Plotter():
             # plot vp id
             # cv2.putText(img, f'{vertiport.id}', (int(self.scale * vertiport.x), int(self.scale * vertiport.y + 20)), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2)
 
-        # plot agents
         for agent in self.sim.agents:
-            color = (255, 0, 0)
+            color = FLIGHT_LEVEL_COLORS[agent.flight_level]
             if agent.grounded:
                 color = (0, 255, 0)
             cv2.circle(img, (int(self.scale * agent.x), int(self.scale * agent.y)), radius=5, color=color, thickness=-1)  # blue circle
@@ -49,8 +55,20 @@ class Plotter():
             # evtol_icon = cv2.warpAffine(self.evtol_icon, M, (self.evtol_icon_size, self.evtol_icon_size))
             # img[int(self.scale * agent.y - self.evtol_icon_size//2):int(self.scale * agent.y + self.evtol_icon_size//2), int(self.scale * agent.x - self.evtol_icon_size//2):int(self.scale * agent.x + self.evtol_icon_size//2)] = evtol_icon
 
+        # weight = 1
+        # for env in prev_envs:
+        #     overlay = img.copy()
+        #     for agent in env.agents:
+        #         color = FLIGHT_LEVEL_COLORS[agent.flight_level]
+        #         if agent.grounded:
+        #             color = (0, 255, 0)
+        #         # cv2.circle(img, (int(self.scale * agent.x), int(self.scale * agent.y)), radius=5, color=color, thickness=-1)  # blue circle
+        #         cv2.circle(overlay, (int(self.scale * agent.x), int(self.scale * agent.y)), radius=5, color=color, thickness=-1)
+        #     img = cv2.addWeighted(overlay, weight, img, 1 - weight, 0)
+        #     weight /= 1.5
+
         # add time to lower right
-        cv2.putText(img, f'Time: {self.sim.time}', (int(self.img_size * 0.02), int(self.img_size * 0.07)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
+        # cv2.putText(img, f'Time: {self.sim.time}', (int(self.img_size * 0.02), int(self.img_size * 0.07)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
 
         # cv2.imwrite(f'./simulator/frames/frame_{self.sim.time}.png', img)
         cv2.imshow('Simulation', img)

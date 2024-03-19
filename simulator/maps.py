@@ -75,12 +75,12 @@ class RandomMap(Map):
         kmeans = KMeans(n_clusters=self.n_vertiports // 3 + 1, random_state=0).fit(locations)
         # get random arrival rate for each cluster
         cluster_arrival_rates = np.random.normal(10, 5, self.n_vertiports // 3 + 1)
-        cluster_arrival_rates = np.clip(cluster_arrival_rates, 2, 24).astype(int)
+        cluster_arrival_rates = np.clip(cluster_arrival_rates, 2, 200).astype(int)
         arrival_rates = np.zeros(self.n_vertiports)
         # assign arrival rates to each vertiport
         for i in range(self.n_vertiports):
             vp_arrival_rate = np.random.normal(cluster_arrival_rates[kmeans.labels_[i]], 2)
-            arrival_rates[i] = np.clip(vp_arrival_rate, 1, 100).astype(int)
+            arrival_rates[i] = np.clip(vp_arrival_rate, 1, 200).astype(int)
 
         for i in range(self.n_vertiports):
             x, y = locations[i]
@@ -149,7 +149,7 @@ class SatMap(Map):
             vp_densities[i] = self.pop_density[int(x), int(y)]
 
         # assign arrival rates to each vertiport
-        arrival_rates = np.clip(self.arrival_rate * vp_densities / np.sum(vp_densities), 1, 100).astype(int)
+        arrival_rates = np.clip(self.arrival_rate * vp_densities / np.sum(vp_densities), 1, 200).astype(int)
         print("Vertiport arrival rates: ", arrival_rates)
 
         self.vertiports = []

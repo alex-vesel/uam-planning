@@ -1,9 +1,9 @@
 import numpy as np
 
 class eVTOL():
-    def __init__(self, id, 
+    def __init__(self, 
+                 id, 
                  max_speed, 
-                 max_accel,
                  x_init,
                  y_init,
                  grounded=False
@@ -11,13 +11,15 @@ class eVTOL():
         self.id = id
         self.speed = max_speed
         self.max_speed = max_speed
-        self.max_accel = max_accel
         self.x = x_init
         self.y = y_init
         self.passenger = None
         self.theta = 0
         self.grounded = grounded
         self.target = None
+        self.flight_level = 0
+        self.vp_target = None
+        self.passenger_target = None
 
         # recording attributes
         self.trip_distance = 0
@@ -27,6 +29,7 @@ class eVTOL():
         self.trip_distance += self.speed * d_t
         if passenger != self.passenger:
             self.trip_distance = 0
+            self.passenger_target = None
         self.passenger = passenger
 
         if action.is_flight_action:
@@ -37,6 +40,9 @@ class eVTOL():
             self.theta = action.takeoff_theta
             if not action.stay:
                 self.grounded = False
+
+        if action.flight_level is not None and self.grounded:
+            self.flight_level = action.flight_level
                 
         if not self.grounded:
             self.x += self.speed * np.cos(self.theta) * d_t
@@ -70,6 +76,7 @@ class eVTOLObservation():
         self.passenger = agent.passenger
         self.target = agent.target
         self.is_grounded = agent.grounded
+        self.flight_level = agent.flight_level
         self.vp_distances = vp_distances
         self.vp_headings = vp_headings
         self.vp_num_passengers = vp_num_passengers

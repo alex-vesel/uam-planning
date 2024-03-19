@@ -35,3 +35,4 @@ class GreedyPassengerMatching:
                         min_dist = d
                         target = i
                 self.vp_targets.append(target)
+        self.flight_levels = [0 for _ in self.obs]

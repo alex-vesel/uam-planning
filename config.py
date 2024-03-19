@@ -1,28 +1,29 @@
 import numpy as np
 from simulator import ms_to_kms
 
-np.random.seed(2424)
+np.random.seed(1)
 
 class Config():
     ## Meta params
     PLOT = False
 
     ## Simulator parameters
-    N_VERTIPORTS = 10
-    N_AGENTS = 40
+    N_VERTIPORTS = 12
+    N_AGENTS = 80
     MAP_SIZE = 120           # km
     D_T = 10              # s
     MAX_TIME = 20000          # s
-    MAX_PASSENGERS = 5 * N_AGENTS
+    MAX_PASSENGERS = 10 * N_AGENTS
     ARRIVAL_RATE_SCALE = 1  # how many times nominal total inflow rate
-    MAP_TYPE = "sf"
+    MAP_TYPE = "nyc"
+    N_FLIGHT_LEVELS = 2
 
     # Policy parameters
-    # POLICY = "greedy"
     POLICY = "greedy"
+    # POLICY = "greedy"
     MATCHING = 'lookahead'
-    # MATCHING = "cluster"
     # MATCHING = "hungarian"
+    # MATCHING = "cluster"
     # MATCHING = "greedy"
 
     ## Safety parameters
@@ -32,7 +33,6 @@ class Config():
 
     ## eVTOL parameters
     MAX_SPEED_MS = 90          # m/s
-    MAX_ACCEL_MS = 10          # m/s^2
 
     ## Vertiport parameters
     VERTIPORT_RADIUS = 1700  # m
@@ -44,7 +44,6 @@ class Config():
         MAP_SIZE = 40
 
     MAX_SPEED_KMS = ms_to_kms(MAX_SPEED_MS)
-    MAX_ACCEL_KMS = ms_to_kms(MAX_ACCEL_MS)
     VERTIPORT_RADIUS_KM = VERTIPORT_RADIUS / 1000
 
     avg_trip_distance = 2 * MAP_SIZE / 3
@@ -61,7 +60,6 @@ def config_calculations(config):
         config.MAP_SIZE = 40
 
     config.MAX_SPEED_KMS = ms_to_kms(config.MAX_SPEED_MS)
-    config.MAX_ACCEL_KMS = ms_to_kms(config.MAX_ACCEL_MS)
     config.VERTIPORT_RADIUS_KM = config.VERTIPORT_RADIUS / 1000
 
     avg_trip_distance = 2 * config.MAP_SIZE / 3
